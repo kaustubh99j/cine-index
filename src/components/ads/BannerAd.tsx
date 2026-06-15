@@ -12,32 +12,23 @@ export default function BannerAd() {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!isMounted || !adKey || !adRef.current) return;
+  import Script from "next/script";
 
-    // Clear previous scripts/iframes
-    adRef.current.innerHTML = "";
-
-    const container = adRef.current;
-    const scriptConfig = document.createElement("script");
-    scriptConfig.type = "text/javascript";
-    scriptConfig.innerHTML = `
-      atOptions = {
-        'key' : '${adKey}',
-        'format' : 'iframe',
-        'height' : 90,
-        'width' : 728,
-        'params' : {}
-      };
-    `;
-
-    const scriptLoad = document.createElement("script");
-    scriptLoad.type = "text/javascript";
-    scriptLoad.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
-
-    container.appendChild(scriptConfig);
-    container.appendChild(scriptLoad);
-  }, [isMounted, adKey]);
+  // inside component return block, after container div
+  {adKey && (
+    <>
+      <Script id={`adsterra-${adKey}`} strategy="lazyOnload" dangerouslySetInnerHTML={{ __html: `
+        var atOptions = {
+          'key' : '${adKey}',
+          'format' : 'iframe',
+          'height' : 90,
+          'width' : 728,
+          'params' : {}
+        };
+      ` }} />
+      <Script src={`//www.highperformanceformat.com/${adKey}/invoke.js`} strategy="lazyOnload" />
+    </>
+  )}
 
   return (
     <div className="w-full flex justify-center py-4 my-2">
