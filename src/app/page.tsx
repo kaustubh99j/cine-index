@@ -10,6 +10,8 @@ import {
   getBackdropUrl,
 } from "@/lib/tmdb";
 import MovieCard from "@/components/MovieCard";
+import BannerAd from "@/components/ads/BannerAd";
+import SidebarAd from "@/components/ads/SidebarAd";
 
 export const revalidate = 3600; // Revalidate home page every hour
 
@@ -94,7 +96,7 @@ export default async function Home() {
               {featuredMovie.title}
             </h1>
 
-            {/* Overview */}
+            {/* Movie Description / Overview */}
             <p className="text-sm sm:text-base md:text-lg text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal line-clamp-3 max-w-2xl mt-2">
               {featuredMovie.overview}
             </p>
@@ -116,6 +118,9 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      {/* === Banner Ad after Hero === */}
+      <BannerAd />
 
       {/* 2. Movie Category Carousels */}
       
@@ -159,6 +164,9 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* === Banner Ad between sections === */}
+      <BannerAd />
+
       {/* Top Rated Section */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -198,6 +206,9 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {/* === Banner Ad at bottom === */}
+      <BannerAd />
 
     </div>
   );
