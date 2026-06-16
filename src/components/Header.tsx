@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Film, Search, Sun, Moon, Star, X, ArrowLeft, Tv } from "lucide-react";
+import { Film, Search, Sun, Moon, Star, X, ArrowLeft, Tv, User } from "lucide-react";
 import { useThemeStore } from "@/store/useThemeStore";
-import { searchMovies, searchTVShows, getPosterUrl } from "@/lib/tmdb";
+import { searchMovies, searchTVShows, searchPeople, getPosterUrl, getProfileUrl } from "@/lib/tmdb";
 
 // Unified search result type
 interface SearchItem {
@@ -13,10 +13,14 @@ interface SearchItem {
   title?: string;
   name?: string;
   poster_path: string | null;
+  profile_path?: string | null;
   release_date?: string;
   first_air_date?: string;
-  vote_average: number;
-  type: "movie" | "tv";
+  vote_average?: number;
+  popularity?: number;
+  known_for_department?: string;
+  known_for?: { title?: string; name?: string }[];
+  type: "movie" | "tv" | "person";
 }
 
 export default function Header() {
@@ -51,7 +55,7 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Combined Movie & TV Search Debouncer
+  // Combined Movie, TV & Person Search Debouncer
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -61,20 +65,35 @@ export default function Header() {
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const [movies, tvShows] = await Promise.all([
+        const [movies, tvShows, people] = await Promise.all([
           searchMovies(searchQuery),
           searchTVShows(searchQuery),
+          searchPeople(searchQuery),
         ]);
 
         const combined: SearchItem[] = [
           ...movies.map((m) => ({ ...m, type: "movie" as const })),
           ...tvShows.map((t) => ({ ...t, type: "tv" as const })),
+          ...people.map((p) => ({
+            id: p.id,
+            name: p.name,
+            poster_path: p.profile_path,
+            profile_path: p.profile_path,
+            popularity: p.popularity,
+            known_for_department: p.known_for_department,
+            known_for: p.known_for?.map(k => ({ title: k.title, name: k.name })),
+            type: "person" as const,
+          })),
         ];
 
         // Sort by popularity / vote score
-        combined.sort((a, b) => b.vote_average - a.vote_average);
+        combined.sort((a, b) => {
+          const aScore = (a.vote_average ?? 0) + (a.popularity ?? 0) / 10;
+          const bScore = (b.vote_average ?? 0) + (b.popularity ?? 0) / 10;
+          return bScore - aScore;
+        });
         
-        setSearchResults(combined.slice(0, 6)); // limit to 6 items
+        setSearchResults(combined.slice(0, 8)); // limit to 8 items
         setShowDropdown(true);
       } catch (err) {
         console.error("Search failed:", err);
@@ -90,7 +109,12 @@ export default function Header() {
     setShowDropdown(false);
     setSearchQuery("");
     setIsMobileSearchOpen(false);
-    router.push(item.type === "movie" ? `/movie/${item.id}` : `/tv/${item.id}`);
+    if (item.type === "person") {
+      // Navigate to the first known_for movie/show, or stay on home
+      router.push(`/`);
+    } else {
+      router.push(item.type === "movie" ? `/movie/${item.id}` : `/tv/${item.id}`);
+    }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -98,6 +122,71 @@ export default function Header() {
     if (searchQuery.trim() && searchResults.length > 0) {
       handleSelectResult(searchResults[0]);
     }
+  };
+
+  // Render a single search result item
+  const renderSearchItem = (item: SearchItem) => {
+    const displayName = item.title || item.name || "Unknown";
+    const imagePath = item.type === "person" ? item.profile_path : item.poster_path;
+    const imageUrl = imagePath ? (item.type === "person" ? getProfileUrl(imagePath, "w45") : getPosterUrl(imagePath, "w92")) : null;
+
+    return (
+      <button
+        key={`${item.type}-${item.id}`}
+        onClick={() => handleSelectResult(item)}
+        className="flex items-center gap-3 w-full text-left p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+      >
+        <div className="h-10 w-7 flex-shrink-0 overflow-hidden rounded bg-zinc-800">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={displayName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-[7px] text-zinc-400">
+              {item.type === "person" ? <User className="h-3 w-3" /> : "No Img"}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+            {displayName}
+          </h4>
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
+            <span className={`capitalize font-bold ${item.type === "person" ? "text-purple-500" : "text-brand"}`}>
+              {item.type === "person" ? "Celebrity" : item.type}
+            </span>
+            {item.type === "person" ? (
+              <>
+                {item.known_for_department && (
+                  <>
+                    <span>•</span>
+                    <span>{item.known_for_department}</span>
+                  </>
+                )}
+                {item.known_for && item.known_for.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="truncate text-zinc-400">{item.known_for[0].title || item.known_for[0].name}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <span>•</span>
+                <span>{(item.release_date || item.first_air_date || "").split("-")[0] || "N/A"}</span>
+                <span>•</span>
+                <span className="flex items-center gap-0.5 text-amber-500 font-medium">
+                  <Star className="h-3 w-3 fill-amber-500" />
+                  {(item.vote_average ?? 0).toFixed(1)}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      </button>
+    );
   };
 
   return (
@@ -121,7 +210,7 @@ export default function Header() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search movies & TV shows..."
+                  placeholder="Search movies, TV shows & celebrities..."
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => {
@@ -153,40 +242,7 @@ export default function Header() {
                   <div className="py-4 text-center text-xs text-zinc-500">Searching...</div>
                 ) : searchResults.length > 0 ? (
                   <div className="flex flex-col gap-1">
-                    {searchResults.map((item) => (
-                      <button
-                        key={`${item.type}-${item.id}`}
-                        onClick={() => handleSelectResult(item)}
-                        className="flex items-center gap-3 w-full text-left p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                      >
-                        <div className="h-10 w-7 flex-shrink-0 overflow-hidden rounded bg-zinc-800">
-                          {item.poster_path ? (
-                            <img
-                              src={getPosterUrl(item.poster_path, "w92")}
-                              alt={item.title || item.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-[6px] text-zinc-400">No Img</div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                            {item.title || item.name}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-zinc-500">
-                            <span className="capitalize font-bold text-brand">{item.type}</span>
-                            <span>•</span>
-                            <span>{(item.release_date || item.first_air_date || "").split("-")[0] || "N/A"}</span>
-                            <span>•</span>
-                            <span className="flex items-center gap-0.5 text-amber-500 font-medium">
-                              <Star className="h-2.5 w-2.5 fill-amber-500" />
-                              {item.vote_average.toFixed(1)}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                    {searchResults.map(renderSearchItem)}
                   </div>
                 ) : (
                   <div className="py-4 text-center text-xs text-zinc-500">No results found.</div>
@@ -225,7 +281,7 @@ export default function Header() {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search movies & TV..."
+                      placeholder="Movies, TV & celebrities..."
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -251,45 +307,12 @@ export default function Header() {
 
                 {/* Suggestions Dropdown */}
                 {showDropdown && searchQuery.trim() !== "" && (
-                  <div className="absolute top-12 right-0 w-72 lg:w-80 rounded-2xl bg-white dark:bg-zinc-900 p-2 shadow-2xl border border-zinc-200 dark:border-zinc-800/80 animate-fade-in z-50">
+                  <div className="absolute top-12 right-0 w-72 lg:w-96 rounded-2xl bg-white dark:bg-zinc-900 p-2 shadow-2xl border border-zinc-200 dark:border-zinc-800/80 animate-fade-in z-50">
                     {isSearching ? (
                       <div className="py-4 text-center text-xs text-zinc-500">Searching...</div>
                     ) : searchResults.length > 0 ? (
                       <div className="flex flex-col gap-1">
-                        {searchResults.map((item) => (
-                          <button
-                            key={`${item.type}-${item.id}`}
-                            onClick={() => handleSelectResult(item)}
-                            className="flex items-center gap-3 w-full text-left p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                          >
-                            <div className="h-10 w-7 flex-shrink-0 overflow-hidden rounded bg-zinc-800">
-                              {item.poster_path ? (
-                                <img
-                                  src={getPosterUrl(item.poster_path, "w92")}
-                                  alt={item.title || item.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center text-[7px] text-zinc-400">No image</div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                                {item.title || item.name}
-                              </h4>
-                              <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-500">
-                                <span className="capitalize font-bold text-brand">{item.type}</span>
-                                <span>•</span>
-                                <span>{(item.release_date || item.first_air_date || "").split("-")[0] || "N/A"}</span>
-                                <span>•</span>
-                                <span className="flex items-center gap-0.5 text-amber-500 font-medium">
-                                  <Star className="h-3 w-3 fill-amber-500" />
-                                  {item.vote_average.toFixed(1)}
-                                </span>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
+                        {searchResults.map(renderSearchItem)}
                       </div>
                     ) : (
                       <div className="py-4 text-center text-xs text-zinc-500">No items found.</div>

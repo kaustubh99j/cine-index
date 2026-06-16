@@ -388,6 +388,37 @@ export async function searchTVShows(query: string): Promise<TVShow[]> {
   );
 }
 
+// ==================== PERSON / CELEBRITY SEARCH ====================
+
+export interface Person {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department?: string;
+  popularity?: number;
+  known_for?: { id: number; title?: string; name?: string; media_type: string; poster_path: string | null }[];
+}
+
+const MOCK_CELEBRITIES: Person[] = [
+  { id: 1001, name: "Timothée Chalamet", profile_path: "/BE751S8K3D0d29D03848Lks839.jpg", known_for_department: "Acting", popularity: 85 },
+  { id: 1002, name: "Zendaya", profile_path: "/y2353LjsS8K3D0d29D03848Lks8.jpg", known_for_department: "Acting", popularity: 82 },
+  { id: 1003, name: "Leonardo DiCaprio", profile_path: null, known_for_department: "Acting", popularity: 90 },
+  { id: 1004, name: "Scarlett Johansson", profile_path: null, known_for_department: "Acting", popularity: 88 },
+  { id: 1005, name: "Robert Downey Jr.", profile_path: "/q58S8K3D0d29D03848Lks839.jpg", known_for_department: "Acting", popularity: 92 },
+  { id: 1006, name: "Cillian Murphy", profile_path: "/n58S8K3D0d29D03848Lks839.jpg", known_for_department: "Acting", popularity: 78 },
+];
+
+export async function searchPeople(query: string): Promise<Person[]> {
+  if (!query) return [];
+  const data = await tmdbFetch<{ results: Person[] }>("/search/person", { query });
+  if (data?.results) return data.results;
+
+  // Mock search logic
+  return MOCK_CELEBRITIES.filter(c =>
+    c.name.toLowerCase().includes(query.toLowerCase())
+  );
+}
+
 export async function getMovieDetails(id: number): Promise<Movie | null> {
   const data = await tmdbFetch<Movie>(`/movie/${id}`);
   if (data) return data;

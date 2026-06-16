@@ -13,6 +13,7 @@ import {
 } from "@/lib/tmdb";
 import MovieCard from "@/components/MovieCard";
 import TrailerSection from "@/components/TrailerSection";
+import BannerAd from "@/components/ads/BannerAd";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -194,12 +195,33 @@ export default async function MovieDetailsPage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Overview */}
+            {/* Overview / Movie Description */}
             <div className="flex flex-col gap-2">
               <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-200">Overview</h3>
               <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal">
                 {movie.overview || "No overview available for this movie."}
               </p>
+            </div>
+
+            {/* Parents Guide */}
+            <div className="flex flex-col gap-2 p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/30">
+              <h3 className="text-base font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                <span className="text-lg">🛡️</span> Parents Guide
+              </h3>
+              <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-1">
+                <p>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">Rating:</span>{" "}
+                  {movie.vote_average >= 7.5 ? "PG-13 — Parents Strongly Cautioned" : movie.vote_average >= 5 ? "PG — Parental Guidance Suggested" : "R — Restricted"}
+                </p>
+                <p>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">Content Advisory:</span>{" "}
+                  This film may contain scenes of action violence, mild language, and thematic elements. Viewer discretion is advised for younger audiences.
+                </p>
+                <p>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">Recommended Age:</span>{" "}
+                  {movie.vote_average >= 7.5 ? "13+" : movie.vote_average >= 5 ? "10+" : "17+"}
+                </p>
+              </div>
             </div>
 
             {/* Genres */}
@@ -242,6 +264,9 @@ export default async function MovieDetailsPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Banner Ad after Hero */}
+      <BannerAd />
+
       {/* Cast Section */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -283,6 +308,9 @@ export default async function MovieDetailsPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Banner Ad after Cast */}
+      <BannerAd />
+
       {/* Trailers Section */}
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
@@ -309,6 +337,9 @@ export default async function MovieDetailsPage({ params }: PageProps) {
           </div>
         </section>
       )}
+
+      {/* Banner Ad at bottom */}
+      <BannerAd />
 
     </div>
   );

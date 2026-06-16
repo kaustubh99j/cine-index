@@ -5,44 +5,63 @@ import React, { useEffect, useRef, useState } from "react";
 export default function BannerAd() {
   const adRef = useRef<HTMLDivElement>(null);
   const [isMounted, setIsMounted] = useState(false);
-  
-  const adKey = process.env.NEXT_PUBLIC_ADSTERRA_BANNER_KEY;
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  import Script from "next/script";
+  useEffect(() => {
+    if (!isMounted || !adRef.current) return;
 
-  // inside component return block, after container div
-  {adKey && (
-    <>
-      <Script id={`adsterra-${adKey}`} strategy="lazyOnload" dangerouslySetInnerHTML={{ __html: `
-        var atOptions = {
-          'key' : '${adKey}',
-          'format' : 'iframe',
-          'height' : 90,
-          'width' : 728,
-          'params' : {}
-        };
-      ` }} />
-      <Script src={`//www.highperformanceformat.com/${adKey}/invoke.js`} strategy="lazyOnload" />
-    </>
-  )}
+    const container = adRef.current;
+    // Clear any previous ad content
+    container.innerHTML = "";
+
+    // Native Banner Ad
+    const nativeScript = document.createElement("script");
+    nativeScript.async = true;
+    nativeScript.setAttribute("data-cfasync", "false");
+    nativeScript.src = "https://pl29751518.effectivecpmnetwork.com/0259af392380d6ba0996f552f6831a6f/invoke.js";
+    
+    const nativeDiv = document.createElement("div");
+    nativeDiv.id = "container-0259af392380d6ba0996f552f6831a6f";
+
+    container.appendChild(nativeDiv);
+    container.appendChild(nativeScript);
+
+    // Standard Banner Ad (728x90)
+    const scriptConfig = document.createElement("script");
+    scriptConfig.type = "text/javascript";
+    scriptConfig.innerHTML = `
+      atOptions = {
+        'key' : '511428db5bc1f6b439946cfdcdf2a9e2',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    `;
+
+    const scriptLoad = document.createElement("script");
+    scriptLoad.type = "text/javascript";
+    scriptLoad.src = "https://www.highperformanceformat.com/511428db5bc1f6b439946cfdcdf2a9e2/invoke.js";
+
+    container.appendChild(scriptConfig);
+    container.appendChild(scriptLoad);
+
+    return () => {
+      if (adRef.current) {
+        adRef.current.innerHTML = "";
+      }
+    };
+  }, [isMounted]);
 
   return (
-    <div className="w-full flex justify-center py-4 my-2">
-      <div 
+    <div className="w-full flex flex-col items-center gap-4 py-4 my-2">
+      <div
         ref={adRef}
-        className="w-full max-w-[728px] h-[90px] flex items-center justify-center border border-dashed border-zinc-300 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 text-xs text-zinc-400 dark:text-zinc-500 font-medium"
-      >
-        {!adKey ? (
-          <div className="text-center">
-            <span className="block font-bold uppercase tracking-wider text-[10px] text-zinc-400 mb-1">Sponsored Ad</span>
-            <span>Banner Ad Placeholder (728x90)</span>
-          </div>
-        ) : null}
-      </div>
+        className="w-full max-w-[728px] min-h-[90px] flex items-center justify-center rounded-xl overflow-hidden"
+      />
     </div>
   );
 }
